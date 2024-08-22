@@ -1,0 +1,148 @@
+{% load tz %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkedHub</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
+</head> 
+<body>
+    <h1>Welcome to LinkedHub</h1>
+    
+    <div class="container">
+        <div class="row">
+            <div class="col-md-4">
+                <img src="{{ profile.profile_pic }}" alt="Profile Picture" class="img-fluid">
+
+                {% if request.user.username == profile.username %}
+                    <hr>
+                    <p><a href="/post/create" class="btn btn-primary">Post Something</a></p>
+                    <p><a href="/settings" class="btn btn-primary">Edit Profile</a></p>
+
+                    {% for pending_request in pending_requests %}
+                        <div class="card my-3">
+                            <p><a href="/{{ pending_request.sender }}">{{ pending_request.name }}</a> wants to connect with you.</p>
+                            <form action="/connect_accept/" method="POST">
+                                {% csrf_token %}
+                                <input type="hidden" name="sender" value="{{ pending_request.sender }}">
+                                <button type="submit" class="btn btn-success">Accept Request</button>
+                            </form>
+                            <form action="/connect_reject/" method="POST">
+                                {% csrf_token %}
+                                <input type="hidden" name="sender" value="{{ pending_request.sender }}">
+                                <button type="submit" class="btn btn-danger">Reject Request</button>
+                            </form>
+                        </div>
+                    {% endfor %}
+
+
+                    {% if suggestions %}
+                        <h5>People you may know from <a href="/{{ profile.organization }}">{{ organization.name }}</a></h5>
+                        {% for suggestion in suggestions %}
+                            <p><a href="/{{ suggestion.username }}">{{ suggestion.name }}</a></p>
+                        {% endfor %}
+                    {% endif %}
+
+                {% endif %}
+            </div>
+            <div class="col-md-8">
+                <h2>{{ profile.name }}</h2>
+                <p>{{ profile.bio }}</p>
+                {% if organization %}
+                    <p><a href="/{{ profile.organization }}">{{ organization.name }}</a></p>
+                {% endif %}
+                <h4>@{{ profile.username }}</h4>
+                <hr>
+                <p>Connections: {{ connections }}</p>
+
+                {% if conn_status == 'not connected' and profile.is_organization == 0 %}
+                    <p>Connection Status: Not Connected</p>
+                    <form action="/connect_request/" method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="receiver" value="{{ profile.username }}">
+                        <button type="submit" class="btn btn-primary">Connect</button>
+                    </form>
+                {% elif conn_status == 'pending' %}
+                    <p>Connection Status: Pending</p>
+                    <form action="/cancel_request/" method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="receiver" value="{{ profile.username }}">
+                        <button type="submit" class="btn btn-danger">Cancel Request</button>
+                    </form>
+                {% elif conn_status == 'requested' %}
+                    <p>Connection Status: Requested</p>
+                    <form action="/connect_accept/" method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="sender" value="{{ profile.username }}">
+                        <button type="submit" class="btn btn-success">Accept Request</button>
+                    </form>
+                    <form action="/connect_reject/" method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="sender" value="{{ profile.username }}">
+                        <button type="submit" class="btn btn-danger">Reject Request</button>
+                    </form>
+                {% elif conn_status == 'connected' %}
+                    <p>Connection Status: Connected</p>
+                    <form action="/connect_remove/" method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="receiver" value="{{ profile.username }}">
+                        <button type="submit" class="btn btn-danger">Remove Connection</button>
+                    </form>
+                {% endif %}
+
+
+                {% if mutual_connections %}
+                    <p>Mutual Connections: 
+                    {% for mutual_connection in mutual_connections %}
+                        <a href="/{{ mutual_connection.username }}">{{ mutual_connection.username }}</a>, 
+                    {% endfor %}
+                    </p>
+                {% endif %}
+
+                {% if secondmutual_connections %}
+                    <p>Second Mutual Connections: 
+                    {% for secondmutual_connection in secondmutual_connections %}
+                        <a href="/{{ secondmutual_connection.username }}">{{ secondmutual_connection.username }}</a>, 
+                    {% endfor %}
+                    </p>
+                {% endif %}
+                <hr>
+                <h4>Posts</h4>
+                {% if posts %}
+                    {% for post in posts %}
+                        <div class="card my-3">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ post.title }}</h5>
+                                <h6 class="card-subtitle mb-2 text-muted">{{ post.timestamp|timezone:"Asia/Kolkata" }}</h6>
+                                <hr>
+                                <p class="card-text">{{ post.content|linebreaks }}</p>
+                                <hr>
+                                <p class="card-title">Views: {{ post.views }}</p>
+                                <p class="card-title">Likes: {{ post.likes }}</p>
+                                <p class="card-title">Comments: {{ post.comments }}</p>
+                                <a href="/post/{{ post.post_id }}" class="btn btn-primary">View Post</a>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p>No posts yet.</p>
+                {% endif %}
+
+
+                {% comment %} {% if not is_connected %}
+                    <form action="{% url 'send_connection_request' profile.username %}" method="POST">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary">Connect</button>
+                    </form>
+                {% else %}
+                    <form action="{% url 'remove_connection' profile.username %}" method="POST">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">Remove Connection</button>
+                    </form>
+                {% endif %} {% endcomment %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>
